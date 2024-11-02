@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>משחק מילות יחס</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        #gameContainer {
+            display: none;
+            margin: 20px auto;
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        #startScreen {
+            margin: 20px auto;
+            width: 400px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .balloon {
+            position: absolute;
+            width: 100px;
+            height: 150px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .balloon:hover {
+            transform: scale(1.1);
+        }
+
+        .balloon-text {
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: white;
+        }
+
+        #sentence {
+            font-size: 24px;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f8f8f8;
+            border-radius: 10px;
+        }
+
+        #feedback {
+            font-size: 24px;
+            margin: 20px;
+        }
+
+        button {
+            font-size: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 15px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input {
+            font-size: 18px;
+            padding: 10px;
+            margin: 10px;
+            width: 200px;
+        }
+
+        #endGameScreen {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 1000;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        #trophy {
+            width: 200px;
+            margin: 20px auto;
+            animation: trophyGlow 2s infinite alternate;
+        }
+
+        @keyframes trophyGlow {
+            from {
+                transform: scale(1);
+                filter: brightness(100%);
+            }
+            to {
+                transform: scale(1.1);
+                filter: brightness(120%);
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f0f0f0;
+            position: absolute;
+            animation: confetti 5s ease-in-out infinite;
+        }
+
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h2>ברוכים הבאים למשחק מילות יחס</h2>
+        <input type="text" id="playerName" placeholder="הכנס את שמך">
+        <br>
+        <button onclick="startGame()">התחלה</button>
+    </div>
+
+    <div id="gameContainer">
+        <div id="sentence"></div>
+        <div id="feedback"></div>
+        <audio id="gameSound" src="sound.mp3"></audio>
+    </div>
+
+    <div id="endGameScreen">
+        <h2>כל הכבוד! 🎉</h2>
+        <h3 id="playerNameDisplay"></h3>
+        <p>סיימת את המשחק בהצלחה!</p>
+        <img id="trophy" src="pitcher.png" alt="גביע">
+        <br>
+        <button onclick="location.reload()">שחק שוב</button>
+    </div>
+
+    <script>
+        const sentences = [
+            {text: "הוא תמיד משתמש ___ ספר שלו בשיעור", answer: "ב"},
+            {text: "הם טסים ___חו\"ל כל שנה", answer: "ל"},
+            {text: "אנחנו יוצאים ___הכיתה להפסקה בשעה 10", answer: "מ"},
+            {text: "אני מדברת ___ ההורים כל ערב", answer: "עם"},
+            {text: "הוא לא זוכר ___ המילים החדשות", answer: "את"}
+        ];
+
+        const prepositions = ["ב", "ל", "מ", "עם", "את"];
+        let currentSentence = 0;
+        let playerName = "";
+
+        function createConfetti() {
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => confetti.remove(), 5000);
+            }
+        }
+
+        function startGame() {
+            playerName = document.getElementById("playerName").value;
+            if (!playerName) {
+                alert("אנא הכנס את שמך");
+                return;
+            }
+            document.getElementById("startScreen").style.display = "none";
+            document.getElementById("gameContainer").style.display = "block";
+            createBalloons();
+            showSentence();
+        }
+
+        function createBalloons() {
+            const gameContainer = document.getElementById("gameContainer");
+            prepositions.forEach((prep, index) => {
+                const balloon = document.createElement("div");
+                balloon.className = "balloon";
+                balloon.innerHTML = `
+                    <svg viewBox="0 0 100 150">
+                        <ellipse cx="50" cy="50" rx="40" ry="45" fill="#0066ff"/>
+                        <path d="M50 95 L50 150" stroke="#ff69b4" stroke-width="3"/>
+                        <text x="50" y="60" text-anchor="middle" fill="white" font-size="24">${prep}</text>
+                    </svg>
+                `;
+                balloon.style.left = (100 + index * 150) + "px";
+                balloon.style.bottom = "0";
+                balloon.onclick = () => checkAnswer(prep);
+                gameContainer.appendChild(balloon);
+                
+                animateBalloon(balloon);
+            });
+        }
+
+        function animateBalloon(balloon) {
+            let pos = 0;
+            const animation = setInterval(() => {
+                pos += 0.5;
+                balloon.style.bottom = pos + "px";
+                if (pos > 400) pos = 0;
+            }, 50);
+        }
+
+        function showSentence() {
+            if (currentSentence >= sentences.length) {
+                endGame();
+                return;
+            }
+            document.getElementById("sentence").textContent = sentences[currentSentence].text;
+            document.getElementById("feedback").textContent = "";
+        }
+
+        function checkAnswer(selected) {
+            const correct = sentences[currentSentence].answer === selected;
+            const feedback = document.getElementById("feedback");
+            const sound = document.getElementById("gameSound");
+            
+            if (correct) {
+                feedback.innerHTML = "כל הכבוד לך! " + "😄";
+                currentSentence++;
+                sound.play();
+                setTimeout(showSentence, 1500);
+            } else {
+                feedback.innerHTML = "נסה שוב " + "😢";
+            }
+        }
+
+        function endGame() {
+            document.getElementById("gameContainer").style.display = "none";
+            document.getElementById("endGameScreen").style.display = "block";
+            document.getElementById("playerNameDisplay").textContent = playerName;
+            createConfetti();
+        }
+    </script>
+</body>
+</html>
